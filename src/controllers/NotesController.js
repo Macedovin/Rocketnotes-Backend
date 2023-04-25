@@ -1,13 +1,24 @@
 const knex = require('../database/knex');
+const AppError = require('../utils/AppError');
 
 class CreateNotes { 
   async create(request, response){
 
     const { title, description, tags, links } = request.body;
 
-    const { user_id } = request.params;
+    const user_id = request.user.id;
 
-    const note_id = await knex("notes").insert({
+    if(tags.length === 0) {
+      
+      throw new AppError("Pelo menos um marcador deve ser adicionado a nota para que esta seja cadastrada.");
+    }
+
+    if(links.length === 0) {
+
+      throw new AppError("Pelo menos um link relacionado a nota deve ser adicionado para que esta seja cadastrada.");
+    }
+
+    const [note_id] = await knex("notes").insert({
       title,
       description,
       user_id
@@ -42,12 +53,11 @@ class CreateNotes {
   
     const note = await knex("notes").where({ id }).first();
 
-    console.log(note, note.id)
-
     const tags = await knex("tags").where({ note_id: id }).orderBy("name");
 
     const links = await knex("links").where({ note_id: id }).orderBy("created_at");
 
+    console.log(links);
     return response.json({
       ...note,
       tags,
@@ -66,7 +76,9 @@ class CreateNotes {
 
   async index(request, response) {
 
-    const { user_id, title, tags } = request.query;
+    const { title, tags } = request.query;
+
+    const user_id = request.user.id;
 
     let  notes;
 
@@ -85,13 +97,14 @@ class CreateNotes {
         .whereIn("name", filterTags)
         .innerJoin("notes", "notes.id", "tags.note_id")
         .orderBy("notes.title")
+        .groupBy("title")
 
     } else {
 
       notes = await knex("notes")
         .where({ user_id })
         .whereLike("title", `%${title}%`)
-        .orderBy("title");
+        .orderBy("title")
 
     }
 
