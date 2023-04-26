@@ -57,7 +57,6 @@ class CreateNotes {
 
     const links = await knex("links").where({ note_id: id }).orderBy("created_at");
 
-    console.log(links);
     return response.json({
       ...note,
       tags,
